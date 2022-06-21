@@ -1,0 +1,29 @@
+{
+  "ethereum": {
+    "dexTrades": [
+      {
+        "baseCurrency": {
+          "symbol": "EMPIRE",
+          "address": "0x293c3ee9abacb08bb8ced107987f00efd1539288"
+        },
+        "side": "SELL",
+        "transaction": {
+          "hash": "0x001431d585c83f069978bd57815a817a1cd9f2a1b0f6ae85264627753166537e"
+        },
+        "exchange": {
+          "name": "Pancake v2"
+        },
+        "priceBNB": 0.19999999999999998,
+        "priceUSD": 96.8718505859375,
+        "tradeValue": 0,
+        "tradeUSD": 0,
+        "time": {
+          "timestamp": {
+            "unixtime": 1635280141
+          }
+        },
+        "tokens": 1624.108357456
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "ethereum": {
+    "dexTrades": [
+      {
+        "count": 40123,
+        "tradeAmount": 27567694.994659405,
+        "exchange": {
+          "fullName": "Pancake v2"
+        },
+        "smartContract": {
+          "address": {
+            "address": "0x60c9bd6eee0a911b987a749f0db0f24d79bcdcf5"
+          }
+        },
+        "buyCurrency": {
+          "address": "0x293c3ee9abacb08bb8ced107987f00efd1539288",
+          "name": "Empire Token",
+          "symbol": "EMPIRE"
+        },
+        "sellCurrency": {
+          "address": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+          "name": "Wrapped BNB",
+          "symbol": "WBNB"
+        }
+      }
+    ]
+  }
+}
