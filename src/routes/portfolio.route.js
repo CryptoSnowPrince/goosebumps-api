@@ -1,8 +1,6 @@
 const express = require("express");
-const { inOutQueries, getBuyTrades, getSellTrades } = require("../services/bitquery/queries/getTrades");
+const { getBuyTrades, getSellTrades } = require("../services/bitquery/queries/getTrades");
 const router = express.Router();
-const buyJson = require("../abi/buy.json");
-const sellJson = require("../abi/sell.json");
 
 const _ = require("lodash");
 
@@ -29,124 +27,6 @@ router.post("/gettrades", async (req, res) => {
   });
 
   let data = _.concat(sellTrades.ethereum.sell, buyTrades.ethereum.buy);
-  data = _.orderBy(
-    data,
-    [
-      function (o) {
-        return o.block.timestamp.iso8601;
-      },
-    ],
-    ["asc"],
-  );
-
-  let pair = _.map(data, (x) => {
-    let d = {
-      smartContract: x.smartContract,
-      buyCurrency: x.buyCurrency,
-      sellCurrency: x.sellCurrency,
-    };
-    return d;
-  });
-  pair = _.uniqBy(pair, (o) => o.buyCurrency.address);
-  // pair = _.filter(pair, (x, i) => i == 5);
-
-  let result = _.map(pair, (x) => {
-    let r = {};
-    r.pair = x;
-    let trades = _.filter(data, (o) => o.buyCurrency.address == x.buyCurrency.address).map((x) => {
-      x.priceUSD = x.totalUSD / x.tokenAmount;
-      x.dateTime = x.block.timestamp.iso8601;
-      return x;
-    });
-
-    let filteredTrades = _.map(trades, (e) => {
-      let d = {};
-      d.amount = e.tokenAmount;
-      if (e.transactionType == 2) {
-        d.amount = 0;
-      }
-      d.priceUSD = e.priceUSD;
-      d.dateTime = e.dateTime;
-      d.transactionType = e.transactionType;
-      return d;
-    });
-    r.trades = _.map(trades, (x, index) => {
-      let y = {};
-      y.dateTime = x.block.timestamp.iso8601;
-      y.tx = x.transaction.hash;
-      y.priceUSD = x.priceUSD;
-      y.tokenAmount = x.tokenAmount;
-      y.holdingAmount = 0;
-      y.transactionType = x.transactionType;
-      y.buyPrices = [];
-      let sellAmount = 0;
-      if (x.transactionType == 2) {
-        sellAmount = x.tokenAmount;
-        const buyPrices = _.cloneDeep(filteredTrades).filter((ft) => ft.dateTime < y.dateTime && ft.amount > 0);
-        y.buyPrices = buyPrices;
-        for (let i = 0; i < index; i++) {
-          if (sellAmount > 0) {
-            if (filteredTrades[i].amount >= sellAmount) {
-              filteredTrades[i].amount = filteredTrades[i].amount - sellAmount;
-              sellAmount = 0;
-            } else {
-              sellAmount = sellAmount - filteredTrades[i].amount;
-              filteredTrades[i].amount = 0;
-            }
-          }
-        }
-      }
-      return y;
-    });
-    r.volume = _.reduce(
-      trades,
-      (y, x) => {
-        if (x.transactionType == 1) {
-          return y + x.totalUSD;
-        }
-        return y;
-      },
-      0,
-    );
-    r.ins = _.reduce(
-      trades,
-      (y, x) => {
-        if (x.transactionType == 1) {
-          return y + x.tokenAmount;
-        }
-        return y;
-      },
-      0,
-    );
-    r.outs = _.reduce(
-      trades,
-      (y, x) => {
-        if (x.transactionType == 2) {
-          return y + x.tokenAmount;
-        }
-        return y;
-      },
-      0,
-    );
-
-    return r;
-  });
-
-  res.json(result);
-});
-
-router.get("/coba", async (req, res) => {
-  buyJson.ethereum.buy.map((x) => {
-    x.transactionType = 1;
-    return x;
-  });
-
-  sellJson.ethereum.sell.map((x) => {
-    x.transactionType = 2;
-    return x;
-  });
-
-  let data = _.concat(sellJson.ethereum.sell, buyJson.ethereum.buy);
   data = _.orderBy(
     data,
     [
