@@ -3,7 +3,6 @@ const { Contract, Provider } = require("ethers-multicall");
 const _ = require("lodash");
 const factoryAbi = require("../abi/factory.json");
 const pairAbi = require("../abi/pair.json");
-const tokenAbi = require("../abi/token.json");
 const { networks } = require("../config/networks/index");
 
 module.exports.getNetwork = (name) => {
@@ -12,12 +11,6 @@ module.exports.getNetwork = (name) => {
   });
   return result;
 };
-
-// //127.0.0.1:3001/api/Charts/GetPairs
-// http: pair.buyCurrency.symbol = token0;
-// pair.sellCurrency.symbol = token1;
-// pair.exchange.fullName = dex_name;
-// pair.smartContract.address.address = pair_address;
 
 module.exports.getPairs = async (networkName, token) => {
   const network = this.getNetwork(networkName);
@@ -90,13 +83,12 @@ module.exports.getPairDetails = async (networkName, pairs) => {
   return responses;
 };
 
-module.exports.isToken = async (networkName, address) => {
+module.exports.isTokenOrAddress = async (networkName, address) => {
   const network = this.getNetwork(networkName);
 
   const provider = new ethers.providers.JsonRpcProvider(network.RPC);
   const bytecode = await provider.getCode(address);
 
-  // No code : "0x" then functionA is definitely not there
   if (bytecode.length <= 2) {
     return false;
   }
@@ -109,7 +101,6 @@ module.exports.isToken = async (networkName, address) => {
     !bytecode.includes(ethers.utils.id("decimals()").slice(2, 10)) &&
     !bytecode.includes(ethers.utils.id("totalSupply()").slice(2, 10))
   ) {
-    console.log("No name() : no function selector in bytecode");
     return false;
   }
 

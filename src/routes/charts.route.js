@@ -1,106 +1,78 @@
 /* eslint-disable node/no-unpublished-require */
 const express = require("express");
-const { getPairs, getNetwork } = require("../services/onChainProviders");
 const router = express.Router();
-const network = require("../config/networks/index");
-const bitquery = require("../abi/res.json");
-const ohlc = require("../abi/ohlc.json");
-const ohlcMock = require("../mock/GetOHLC.json");
+const { validate } = require("express-validation");
+const httpStatus = require("http-status");
 
-const cmc = require("../abi/cmc.json");
-const latestTrade = require("../abi/latest.json");
 const { getPairsData } = require("../services/bitquery/queries/getpairs");
-const { timeout } = require("../utils/helper");
+const { getOHLC, getLatestTrades } = require("../services/bitquery/queries/getTrades");
+const { getCmcInfo } = require("../services/coinmarketcap");
+const { GET_PAIRS, GET_CMC_INFO, GET_LATEST_TRADE, GET_OHLC } = require("../validations/charts.validation");
 
 /**
  * GET charts/getpairs
  */
-router.get("/getpairs", async (req, res) => {
+router.get("/getpairs", validate(GET_PAIRS), async (req, res) => {
   const reqAddress = req.query.address;
   const reqNetwork = req.query.network;
-
-  const result = await getPairsData(reqNetwork, reqAddress);
-
-  res.json(result);
-});
-/**
- * GET charts/getpairs
- */
-router.get("/getpair", async (req, res) => {
-  const reqAddress = req.query.address;
-  const reqNetwork = req.query.network;
-
-  const result = await getPairsData(reqNetwork, reqAddress);
-
-  res.json(result);
+  try {
+    const result = await getPairsData(reqNetwork, reqAddress);
+    res.json(result);
+  } catch (error) {
+    res.status(httpStatus.SERVICE_UNAVAILABLE);
+    res.json(error.message);
+  }
 });
 
 /**
  * GET charts/getcmcinfo
  */
-router.get("/getcmcinfo", (req, res) => res.json({}));
+router.get("/getcmcinfo", validate(GET_CMC_INFO), async (req, res) => {
+  let q = req.query;
+  try {
+    const result = await getCmcInfo(q.address);
+    res.json(result);
+  } catch (error) {
+    res.status(httpStatus.SERVICE_UNAVAILABLE);
+    res.json(error.message);
+  }
+});
 
 /**
  * GET charts/getlatesttrades
  */
-router.get("/getlatesttrades", (req, res) => {
-  //   res.json([]);
-  //   return;
+router.get("/getlatesttrades", validate(GET_LATEST_TRADE), async (req, res) => {
+  let q = req.query;
 
-  const dt = latestTrade.ethereum.dexTrades;
-  data = dt.map((d) => {
-    let r = {
-      tx: d.transaction.hash,
-      time: d.time.timestamp.unixtime * 1000,
-      isBuy: d.side == "SELL" ? false : true,
-      tokens: d.tokens,
-      priceUSD: d.priceUSD,
-      price: d.priceBNB,
-      symbol: d.baseCurrency.symbol,
-      dex: d.exchange.name,
-      value: 10,
-    };
-    return r;
-  });
-
-  res.json(data);
+  if (q.limit === undefined) {
+    q.limit = 20;
+  }
+  try {
+    const result = await getLatestTrades(q);
+    res.json(result);
+  } catch (error) {
+    res.status(httpStatus.SERVICE_UNAVAILABLE);
+    res.json(error.message);
+  }
 });
-
-function randomData(rtime) {
-  let dt = ohlcMock;
-  const random = Math.floor(Math.random() * dt.length);
-
-  let result = dt[random];
-  result.time = rtime;
-  return result;
-}
 
 /**
  * GET charts/getohlc
  */
-router.get("/getohlc", async (req, res) => {
-  await timeout(5);
+router.get("/getohlc", validate(GET_OHLC), async (req, res) => {
   let q = req.query;
-  let result = [];
-  let base = 1;
-  if (q.useCache == "false") {
-    base = 1000;
+
+  if (q.interval === "1D") {
+    q.interval = 1440;
   }
+  try {
+    const result = await getOHLC(q);
 
-  let startTime = Number(q.startTime) * base;
-  let endTime = Number(q.endTime) * base;
-  let interval = Number(q.interval) * 60 * base;
-  let countData = (endTime - startTime) / interval;
-
-  countData = countData > 500 ? 500 : countData;
-  for (let i = 0; i < countData; i++) {
-    let itime = i * interval;
-    let rtime = startTime + itime;
-
-    result[i] = randomData((rtime * 1000) / base);
+    res.json(result);
+  } catch (error) {
+    res.status(httpStatus.SERVICE_UNAVAILABLE);
+    res.json(error.message);
   }
-
-  res.json(result);
 });
 
 module.exports = router;

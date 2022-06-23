@@ -195,9 +195,177 @@ const getSellTrades = async (networkName, address) => {
   return result;
 };
 
+const getOHLC = async (args) => {
+  const network = getNetwork(args.network);
+  let gql = `query (
+  $network: EthereumNetwork!, 
+  $pair: String!,
+  $interval: Int!,
+  $from: ISO8601DateTime,
+  $till: ISO8601DateTime) {
+  ethereum(network: $network) {
+    dexTrades(
+      date: {since: $from, till: $till}
+      options: {asc: "timeInterval.minute"}
+      smartContractAddress: {is: $pair}
+      quoteCurrency: {in: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"}
+    ) {
+      timeInterval {
+        minute(count: $interval)
+      }
+      high: quotePrice(calculate: maximum)
+      low: quotePrice(calculate: minimum)
+      open: minimum(of: block, get: quote_price)
+      close: maximum(of: block, get: quote_price)
+      baseCurrency {
+        name
+      }
+      quoteCurrency {
+        name
+      }
+      trades: count
+      volume: quoteAmount
+      volumeUSD: quoteAmount (in:USD)
+    }
+  }
+}
+`;
+
+  let variables = {
+    network: network.Name,
+    from: new Date(Number(args.startTime) * 1000).toISOString(),
+    till: new Date(Number(args.endTime) * 1000).toISOString(),
+    pair: args.pair,
+    interval: Number(args.interval),
+  };
+  let headers = {
+    "Content-Type": "application/json",
+    accept: "application/json",
+    "x-api-key": BITQUERY_API,
+  };
+
+  const response = await request({
+    url: BITQUERY_ENDPOINT,
+    document: gql,
+    variables: variables,
+    requestHeaders: headers,
+  });
+
+  const result = response.ethereum.dexTrades.map((el) => ({
+    time: new Date(el.timeInterval.minute).getTime(), // date string in api response
+    low: (el.low * el.volumeUSD) / el.volume,
+    high: (el.high * el.volumeUSD) / el.volume,
+    open: (Number(el.open) * el.volumeUSD) / el.volume,
+    close: (Number(el.close) * el.volumeUSD) / el.volume,
+    volume: el.volumeUSD,
+    lowBNB: el.low,
+    highBNB: el.high,
+    openBNB: Number(el.open),
+    closeBNB: Number(el.close),
+    volumeBNB: el.volume,
+  }));
+  // result.shift();
+
+  return result;
+};
+
+const getLatestTrades = async (args) => {
+  const network = getNetwork(args.network);
+  let gql = `
+query (
+    $network: EthereumNetwork!, 
+    $limit: Int!, 
+    $from: ISO8601DateTime, 
+    $till: ISO8601DateTime,
+    $pair: String!,
+    $token0: String!,
+    $token1: String!,
+    ) {
+  ethereum(network: $network) {
+    dexTrades(
+      options: {desc: "block.timestamp.unixtime", asc: "tradeIndex", limit: $limit}
+      date: {since: $from, till: $till}
+      smartContractAddress: {is: $pair}
+      baseCurrency: {is: $token1}
+      quoteCurrency: {is: $token0}
+    ) {
+      baseCurrency {
+        symbol
+        address
+        decimals
+      }
+      value: baseAmount
+      valueUSD: baseAmount(in: USD)
+      quoteCurrency {
+        symbol
+        address
+        decimals
+      }
+      tokens: quoteAmount
+      side
+      transaction {
+        hash
+      }
+      exchange {
+        fullName
+      }
+      rawPrice: quotePrice
+      tradeIndex
+      block {
+        timestamp {
+          unixtime
+        }
+      }
+    }
+  }
+}
+
+`;
+
+  let variables = {
+    network: network.Name,
+    from: new Date(Number(args.startTime) * 1000).toISOString(),
+    till: new Date(Number(args.endTime) * 1000).toISOString(),
+    pair: args.pair,
+    token0: args.token0,
+    token1: args.token1,
+    limit: Number(args.limit),
+  };
+  let headers = {
+    "Content-Type": "application/json",
+    accept: "application/json",
+    "x-api-key": BITQUERY_API,
+  };
+
+  const response = await request({
+    url: BITQUERY_ENDPOINT,
+    document: gql,
+    variables: variables,
+    requestHeaders: headers,
+  });
+
+  const result = response.ethereum.dexTrades.map((el) => ({
+    isBuy: el.side == "SELL" ? false : true,
+    dex: el.exchange.fullName,
+    time: el.block.timestamp.unixtime * 1000,
+    tx: el.transaction.hash,
+    symbol: el.baseCurrency.symbol,
+    tokens: el.tokens,
+    value: el.value,
+    valueUSD: el.valueUSD,
+    price: (el.rawPrice * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
+    priceUSD: (el.rawPrice * el.valueUSD * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
+  }));
+  // result.shift();
+
+  return result;
+};
+
 module.exports = {
   inOutQueries,
   latestTrade,
   getSellTrades,
   getBuyTrades,
+  getOHLC,
+  getLatestTrades,
 };
