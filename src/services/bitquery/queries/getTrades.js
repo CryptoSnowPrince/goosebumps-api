@@ -200,6 +200,7 @@ const getOHLC = async (args) => {
   let gql = `query (
   $network: EthereumNetwork!, 
   $pair: String!,
+  $token1: String!,
   $interval: Int!,
   $from: ISO8601DateTime,
   $till: ISO8601DateTime) {
@@ -208,7 +209,7 @@ const getOHLC = async (args) => {
       date: {since: $from, till: $till}
       options: {asc: "timeInterval.minute"}
       smartContractAddress: {is: $pair}
-      quoteCurrency: {in: "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"}
+      quoteCurrency: {is: $token1}
     ) {
       timeInterval {
         minute(count: $interval)
@@ -235,6 +236,8 @@ const getOHLC = async (args) => {
     network: network.Name,
     from: new Date(Number(args.startTime) * 1000).toISOString(),
     till: new Date(Number(args.endTime) * 1000).toISOString(),
+    token0: args.token0,
+    token1: args.token1,
     pair: args.pair,
     interval: Number(args.interval),
   };

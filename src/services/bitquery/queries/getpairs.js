@@ -58,6 +58,40 @@ const getPairsData = async (networkName, address) => {
   return result.ethereum.dexTrades;
 };
 
+const isTokenOrNot = async (networkName, address) => {
+  const network = getNetwork(networkName);
+  let gql = `query ($network: EthereumNetwork!, $address: String!) {
+  ethereum(network: $network) {
+    address(address: {is: $address}) {
+      smartContract {
+        contractType
+      }
+    }
+  }
+}
+
+`;
+  let variables = {
+    network: network.Name,
+    address: address,
+  };
+  let headers = {
+    "Content-Type": "application/json",
+    accept: "application/json",
+    "x-api-key": BITQUERY_API,
+  };
+
+  const response = await request({
+    url: BITQUERY_ENDPOINT,
+    document: gql,
+    variables: variables,
+    requestHeaders: headers,
+  });
+
+  return response.ethereum.address[0].smartContract == null ? false : true;
+};
+
 module.exports = {
   getPairsData,
+  isTokenOrNot,
 };
