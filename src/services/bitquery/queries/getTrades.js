@@ -254,20 +254,24 @@ const getOHLC = async (args) => {
     requestHeaders: headers,
   });
 
-  const result = response.ethereum.dexTrades.map((el) => ({
-    time: new Date(el.timeInterval.minute).getTime(), // date string in api response
-    low: (Math.abs(el.low) * el.volumeUSD) / el.volume,
-    high: (Math.abs(el.high) * el.volumeUSD) / el.volume,
-    open: (Math.abs(Number(el.open)) * el.volumeUSD) / el.volume,
-    close: (Math.abs(Number(el.close)) * el.volumeUSD) / el.volume,
-    volume: Math.abs(el.volumeUSD),
-    lowBNB: Math.abs(el.low),
-    highBNB: Math.abs(el.high),
-    openBNB: Math.abs(Number(el.open)),
-    closeBNB: Math.abs(Number(el.close)),
-    volumeBNB: Math.abs(el.volume),
-  }));
-  // result.shift();
+  let result = response.ethereum.dexTrades
+    .map((el) => ({
+      time: new Date(el.timeInterval.minute).getTime(), // date string in api response
+      low: (Math.abs(el.low) * el.volumeUSD) / el.volume,
+      high: (Math.abs(el.high) * el.volumeUSD) / el.volume,
+      open: (Math.abs(Number(el.open)) * el.volumeUSD) / el.volume,
+      close: (Math.abs(Number(el.close)) * el.volumeUSD) / el.volume,
+      volume: Math.abs(el.volumeUSD),
+      lowBNB: Math.abs(el.low),
+      highBNB: Math.abs(el.high),
+      openBNB: Math.abs(Number(el.open)),
+      closeBNB: Math.abs(Number(el.close)),
+      volumeBNB: Math.abs(el.volume),
+    }))
+    .filter((x) => {
+      return x.time >= args.startTime * 1000 && x.time <= args.endTime * 1000;
+    });
+
   return result;
 };
 
