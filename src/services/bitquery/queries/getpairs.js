@@ -8,7 +8,7 @@ const getPairsData = async (networkName, address) => {
   const network = getNetwork(networkName);
   let gql = `query ($network: EthereumNetwork!, $token: String) {
   ethereum(network: $network) {
-    dexTrades(options:{desc:"trades", limit:10 baseCurrency: {is: $token}) {
+    dexTrades(options:{desc:"trades", limit:10} baseCurrency: {is: $token}) {
       smartContract {
         address {
           address
