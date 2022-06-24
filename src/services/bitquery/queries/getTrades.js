@@ -212,7 +212,7 @@ const getOHLC = async (args) => {
       quoteCurrency: {is: $token1}
     ) {
       timeInterval {
-        minute(count: $interval)
+        minute(count: $interval, format: "%Y-%m-%dT%H:%M:%SZ")
       }
       high: quotePrice(calculate: maximum)
       low: quotePrice(calculate: minimum)
@@ -256,34 +256,24 @@ const getOHLC = async (args) => {
 
   const result = response.ethereum.dexTrades.map((el) => ({
     time: new Date(el.timeInterval.minute).getTime(), // date string in api response
-    low: (el.low * el.volumeUSD) / el.volume,
-    high: (el.high * el.volumeUSD) / el.volume,
-    open: (Number(el.open) * el.volumeUSD) / el.volume,
-    close: (Number(el.close) * el.volumeUSD) / el.volume,
-    volume: el.volumeUSD,
-    lowBNB: el.low,
-    highBNB: el.high,
-    openBNB: Number(el.open),
-    closeBNB: Number(el.close),
-    volumeBNB: el.volume,
+    low: (Math.abs(el.low) * el.volumeUSD) / el.volume,
+    high: (Math.abs(el.high) * el.volumeUSD) / el.volume,
+    open: (Math.abs(Number(el.open)) * el.volumeUSD) / el.volume,
+    close: (Math.abs(Number(el.close)) * el.volumeUSD) / el.volume,
+    volume: Math.abs(el.volumeUSD),
+    lowBNB: Math.abs(el.low),
+    highBNB: Math.abs(el.high),
+    openBNB: Math.abs(Number(el.open)),
+    closeBNB: Math.abs(Number(el.close)),
+    volumeBNB: Math.abs(el.volume),
   }));
   // result.shift();
-
   return result;
 };
 
 const getLatestTrades = async (args) => {
   const network = getNetwork(args.network);
-  let priceCalc = 0;
-  let baseCurrency = args.token0;
-  if (args.token1.toLowerCase() === network.Currency.Address) {
-    baseCurrency = args.token1;
-    priceCalc = 1;
-  }
-  if (network.USDs.includes(args.token1.toLowerCase())) {
-    baseCurrency = args.token1;
-    priceCalc = 1;
-  }
+  let baseCurrency = args.token1;
 
   let gql = `
 query (
@@ -321,7 +311,6 @@ query (
       exchange {
         fullName
       }
-      rawPrice: quotePrice
       tradeIndex
       block {
         timestamp {
@@ -365,14 +354,9 @@ query (
     tokens: el.tokens,
     value: el.value,
     valueUSD: el.valueUSD,
-    price:
-      priceCalc == 0
-        ? (el.rawPrice * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value
-        : ((1 / el.rawPrice) * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
-    priceUSD:
-      priceCalc == 0
-        ? (el.rawPrice * el.valueUSD * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value
-        : ((1 / el.rawPrice) * el.valueUSD * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
+    rawPrice: el.rawPrice,
+    price: el.value / el.tokens,
+    priceUSD: el.valueUSD / el.tokens,
   }));
   // result.shift();
 
