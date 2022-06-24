@@ -274,6 +274,17 @@ const getOHLC = async (args) => {
 
 const getLatestTrades = async (args) => {
   const network = getNetwork(args.network);
+  let priceCalc = 0;
+  let baseCurrency = args.token0;
+  if (args.token1.toLowerCase() === network.Currency.Address) {
+    baseCurrency = args.token1;
+    priceCalc = 1;
+  }
+  if (network.USDs.includes(args.token1.toLowerCase())) {
+    baseCurrency = args.token1;
+    priceCalc = 1;
+  }
+
   let gql = `
 query (
     $network: EthereumNetwork!, 
@@ -281,16 +292,14 @@ query (
     $from: ISO8601DateTime, 
     $till: ISO8601DateTime,
     $pair: String!,
-    $token0: String!,
-    $token1: String!,
+    $baseCurrency: String!,
     ) {
   ethereum(network: $network) {
     dexTrades(
       options: {desc: "block.timestamp.unixtime", asc: "tradeIndex", limit: $limit}
       date: {since: $from, till: $till}
       smartContractAddress: {is: $pair}
-      baseCurrency: {is: $token1}
-      quoteCurrency: {is: $token0}
+      baseCurrency: {is: $baseCurrency}
     ) {
       baseCurrency {
         symbol
@@ -323,6 +332,7 @@ query (
   }
 }
 
+
 `;
 
   let variables = {
@@ -330,8 +340,7 @@ query (
     from: new Date(Number(args.startTime) * 1000).toISOString(),
     till: new Date(Number(args.endTime) * 1000).toISOString(),
     pair: args.pair,
-    token0: args.token0,
-    token1: args.token1,
+    baseCurrency: baseCurrency,
     limit: Number(args.limit),
   };
   let headers = {
@@ -356,8 +365,14 @@ query (
     tokens: el.tokens,
     value: el.value,
     valueUSD: el.valueUSD,
-    price: (el.rawPrice * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
-    priceUSD: (el.rawPrice * el.valueUSD * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
+    price:
+      priceCalc == 0
+        ? (el.rawPrice * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value
+        : ((1 / el.rawPrice) * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
+    priceUSD:
+      priceCalc == 0
+        ? (el.rawPrice * el.valueUSD * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value
+        : ((1 / el.rawPrice) * el.valueUSD * Math.pow(10, el.quoteCurrency.decimals - el.baseCurrency.decimals)) / el.value,
   }));
   // result.shift();
 
